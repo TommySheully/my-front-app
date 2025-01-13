@@ -14,13 +14,16 @@ export interface Response<T> {
   message: string;
 }
 
+type ApiType = 'users'|'users-bd'
+
 function App() {
   const [users, setUsers] = useState<User[]>([])
+  const [type, setType] = useState<ApiType>('users-bd')
   const [currentUsers, setCurrentUsers] = useState<User|null>(null)
 
-  const getUsers = async () => {
+  const getUsers = async (type: ApiType) => {
     try {
-      const response = await fetch(`${BASE_URL}/api/users`)
+      const response = await fetch(`${BASE_URL}/api/${type}`)
       const data: Response<User[]> = await response.json()
       setUsers(data.data)
     } catch (error) {
@@ -28,9 +31,9 @@ function App() {
     }
   }
 
-  const getCurrentUsers = async (id: string): Promise<void> => {
+  const getCurrentUsers = async (type: ApiType, id: string): Promise<void> => {
     try {
-      const response = await fetch(`${BASE_URL}/api/users/${id}`)
+      const response = await fetch(`${BASE_URL}/api/${type}/${id}`)
       const data: Response<User> = await response.json() // Указываем тип данных
       setCurrentUsers(data.data)
     } catch (error) {
@@ -38,14 +41,14 @@ function App() {
     }
   }
 
-  const createUser = async (): Promise<void> => {
+  const createUser = async (type: ApiType): Promise<void> => {
     try {
-      const response = await fetch(`${BASE_URL}/api/users`, {
+      const response = await fetch(`${BASE_URL}/api/${type}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ name: 'new name', email: 'new email' })
+        body: JSON.stringify({ name: 'new name', email: `${crypto.randomUUID()}@gmail.com` })
       })
       const data: Response<User> = await response.json()
       setUsers([...users, data.data])
@@ -54,14 +57,14 @@ function App() {
     }
   }
 
-  const updateUser = async (id: string): Promise<void> => {
+  const updateUser = async (type: ApiType, id: string, email: string): Promise<void> => {
     try {
-      const response = await fetch(`${BASE_URL}/api/users/${id}`, {
+      const response = await fetch(`${BASE_URL}/api/${type}/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ name: 'update name', email: 'update email' })
+        body: JSON.stringify({ name: 'update name', email })
       })
       const data: Response<User> = await response.json()
       setUsers(users.map(user => (user.id === id ? data.data : user
@@ -71,9 +74,9 @@ function App() {
     }
   }
 
-  const deleteUser = async (id: string): Promise<void> => {
+  const deleteUser = async (type: ApiType, id: string): Promise<void> => {
     try {
-      await fetch(`${BASE_URL}/api/users/${id}`, {
+      await fetch(`${BASE_URL}/api/${type}/${id}`, {
         method: 'DELETE'
       })
       setUsers(users.filter(user => user.id !== id))
@@ -85,21 +88,26 @@ function App() {
   return (
     <div className="App">
       <div>
+        <span>запрос идет на {type === 'users-bd' ? 'к базе данных' : 'за массивом на беке'}</span> ===
+        <input type="checkbox" value={type} onChange={() => setType(type === 'users' ? 'users-bd' : 'users')}/>
+      </div>
+
+      <div>
         Запрошенный пользователь === {currentUsers && currentUsers.email + currentUsers.name + currentUsers.id}
       </div>
-      <button onClick={getUsers}>получить пользователей</button>
-      <button onClick={createUser}>создать пользователя</button>
+      <button onClick={() => getUsers(type)}>получить пользователей</button>
+      <button onClick={() => createUser(type)}>создать пользователя</button>
       <h1>Пользователи</h1>
       <ul>
         {users.map(user => (
-          <li key={user.id}>
-            {user.name} - {user.email}
-            <button onClick={() => updateUser(user.id)}>Обновить
+          user && <li key={user?.id}>
+            {user?.name} - {user?.email}
+            <button onClick={() => updateUser(type, user?.id, user?.email)}>Обновить
             </button>
-            <button onClick={() => deleteUser(user.id)}>Удалить</button>
-            <button onClick={() => getCurrentUsers(user.id)}>получить пользователя</button>
+            <button onClick={() => deleteUser(type, user?.id)}>Удалить</button>
+            <button onClick={() => getCurrentUsers(type, user?.id)}>получить пользователя</button>
           </li>
-        ))}
+          ))}
       </ul>
     </div>
   )
